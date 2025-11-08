@@ -102,31 +102,7 @@ function createPreviewImageUrl({
   return previewUrl.toString();
 }
 
-function formatHighlights(highlights: string[], metricLine?: string): string | null {
-  if (highlights.length === 0) return null;
-
-  const uniqueHighlights: string[] = [];
-  const seen = new Set<string>();
-  const normalizedMetric = metricLine?.toLowerCase();
-
-  for (const highlight of highlights) {
-    const normalized = highlight.toLowerCase();
-    if (normalizedMetric && normalized === normalizedMetric) continue;
-    if (seen.has(normalized)) continue;
-    seen.add(normalized);
-    uniqueHighlights.push(highlight);
-    if (uniqueHighlights.length === 3) break;
-  }
-
-  if (uniqueHighlights.length === 0) return null;
-
-  const formatted = uniqueHighlights
-    .map((highlight) => `- ${escapeSlackMarkdown(truncate(highlight, 150))}`)
-    .join("\n");
-  return formatted.length > 0 ? formatted : null;
-}
-
-function createSlackBlocks({
+function createSlackMessage({
   presentation,
   answerUrl,
   previewImageUrl,
@@ -134,150 +110,37 @@ function createSlackBlocks({
   presentation: AnswerPresentation;
   answerUrl: string;
   previewImageUrl?: string;
-}): KnownBlock[] {
-  const blocks: KnownBlock[] = [];
+}) {
+  const metricLabel = presentation.metricLabel ? sanitizePlainText(presentation.metricLabel) : null;
+  const metricValue = presentation.metricValue ? sanitizePlainText(presentation.metricValue) : null;
+  const metricSubtitle = presentation.metricSubtitle ? sanitizePlainText(presentation.metricSubtitle) : null;
+  const title = sanitizePlainText(presentation.title);
+  const description = presentation.description ? sanitizePlainText(presentation.description) : null;
 
-  const normalize = (text?: string | null) =>
-    text ? sanitizePlainText(text).replace(/\s+/g, " ").trim().toLowerCase() : "";
+  let summary: string | null =
+    metricLabel && metricValue
+      ? `${metricLabel}: ${metricValue}`
+      : metricValue ?? metricLabel ?? title ?? metricSubtitle ?? description ?? null;
 
-  blocks.push({
-    type: "header",
-    text: {
-      type: "plain_text",
-      text: truncate(escapeSlackText(presentation.title), 150),
-      emoji: true,
-    },
-  });
+  if (!summary || summary.length === 0) {
+    summary = "Answer ready";
+  }
 
-  const metricLabel = presentation.metricLabel
-    ? escapeSlackMarkdown(truncate(presentation.metricLabel, 80))
-    : null;
-  const metricValue = presentation.metricValue
-    ? escapeSlackMarkdown(truncate(presentation.metricValue, 120))
-    : null;
-  const metricSubtitle = presentation.metricSubtitle
-    ? escapeSlackMarkdown(truncate(presentation.metricSubtitle, 120))
-    : null;
-  const metricValuePlain = presentation.metricValue
-    ? truncate(sanitizePlainText(presentation.metricValue), 75)
-    : null;
-  const metricLabelPlain = presentation.metricLabel ? sanitizePlainText(presentation.metricLabel) : null;
-  const metricSubtitlePlain = presentation.metricSubtitle
-    ? sanitizePlainText(presentation.metricSubtitle)
-    : null;
+  summary = truncate(summary, 120);
+  const learnMoreLink = `<${answerUrl}|learn more>`;
+  const text = `${summary}, ${learnMoreLink}`;
 
-  if (metricLabel && metricValue) {
-    blocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*${metricLabel}*`,
-      },
-    });
-
-    blocks.push({
-      type: "header",
-      text: {
-        type: "plain_text",
-        text: metricValuePlain ?? sanitizePlainText(presentation.metricValue ?? ""),
-        emoji: true,
-      },
-    });
-
-    if (metricSubtitle && normalize(metricSubtitlePlain) !== normalize(metricLabelPlain)) {
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `_${metricSubtitle}_`,
+  const attachments = previewImageUrl
+    ? [
+        {
+          fallback: `Preview image for ${truncate(summary, 100)}`,
+          image_url: previewImageUrl,
         },
-      });
-    }
-  }
+      ]
+    : undefined;
 
-  const description = presentation.description?.trim();
-  if (description) {
-    const normalizedDescription = normalize(description);
-    const duplicateWithMetric =
-      normalizedDescription === normalize(metricLabelPlain) ||
-      normalizedDescription === normalize(metricValuePlain) ||
-      normalizedDescription === normalize(metricSubtitlePlain);
-
-    if (!duplicateWithMetric) {
-      blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: escapeSlackMarkdown(truncate(description, 3000)),
-        },
-      });
-    }
-  }
-
-  if (previewImageUrl) {
-    const sanitizedTitle = sanitizePlainText(presentation.title);
-    const altText = truncate(sanitizedTitle, 150) || "Generative answer preview";
-    blocks.push({
-      type: "image",
-      image_url: previewImageUrl,
-      alt_text: altText,
-      title: {
-        type: "plain_text",
-        text: truncate(sanitizedTitle, 150),
-        emoji: true,
-      },
-    });
-  }
-
-  const highlightBlacklist = new Set<string>();
-  if (description) {
-    highlightBlacklist.add(normalize(description));
-  }
-  if (metricLabelPlain) {
-    highlightBlacklist.add(normalize(metricLabelPlain));
-  }
-  if (metricValuePlain) {
-    highlightBlacklist.add(normalize(metricValuePlain));
-  }
-  if (metricSubtitlePlain) {
-    highlightBlacklist.add(normalize(metricSubtitlePlain));
-  }
-
-  const filteredHighlights = presentation.highlights.filter(
-    (highlight) => !highlightBlacklist.has(normalize(highlight))
-  );
-
-  const metricLine =
-    metricLabelPlain && metricValuePlain ? `${metricLabelPlain}: ${metricValuePlain}` : undefined;
-  const highlights = formatHighlights(filteredHighlights, metricLine);
-  if (highlights) {
-    blocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*Highlights*\n${highlights}`,
-      },
-    });
-  }
-
-  blocks.push({
-    type: "actions",
-    elements: [
-      {
-        type: "button",
-        text: {
-          type: "plain_text",
-          text: "View more",
-          emoji: true,
-        },
-        url: answerUrl,
-      },
-    ],
-  });
-
-  return blocks;
+  return { text, attachments };
 }
-
 function verifySlackSignature(request: NextRequest, rawBody: string): boolean {
   const timestamp = request.headers.get("x-slack-request-timestamp");
   const signature = request.headers.get("x-slack-signature");
@@ -406,20 +269,17 @@ async function handleAppMention(
     } catch (error) {
       console.error("Failed to generate preview image URL:", error);
     }
-    
-    const blocks = createSlackBlocks({
+    const { text: messageText, attachments } = createSlackMessage({
       presentation,
       answerUrl,
       previewImageUrl,
     });
-    const fallbackTitle = truncate(sanitizePlainText(presentation.title), 120);
-    const fallbackText = `${fallbackTitle} • ${answerUrl}`;
 
     const messagePayload = {
       channel: event.channel,
-      text: fallbackText,
-      blocks,
-    } as const;
+      text: messageText,
+      ...(attachments ? { attachments } : {}),
+    };
 
     // Update placeholder message or post new message
     if (placeholderTs) {
