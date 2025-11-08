@@ -3,16 +3,11 @@
 import { useState, useEffect } from "react";
 
 interface LiveIndicatorProps {
-  updateInterval: number; // milliseconds
+  updateInterval: number;
   isPaused: boolean;
   lastUpdated?: string;
   remainingRefreshes?: number;
 }
-
-/**
- * Subtle live indicator showing auto-refresh status
- * Displays as a small pulsing dot in the top-right corner of widgets
- */
 export function LiveIndicator({ 
   updateInterval, 
   isPaused, 
@@ -40,7 +35,6 @@ export function LiveIndicator({
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      {/* Pulsing dot */}
       <div className="relative">
         <div
           className={`
@@ -51,8 +45,7 @@ export function LiveIndicator({
             }
           `}
         />
-        
-        {/* Tooltip */}
+
         {showTooltip && (
           <div
             className="

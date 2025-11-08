@@ -1,42 +1,32 @@
-# Cursor Gen UI
+# Ask Tony UI
 
-Generate UI components tailored to your questions. Built with Cursor Agent CLI.
+Ask Tony UI renders model-generated dashboards and answers produced by the Ask Tony agent. The project is a Next.js app that streams plan, data, and widget updates from the Cursor agent runtime.
 
-## Local Development
+## Quick Start
 
-```bash
-# Install Cursor CLI
-curl https://cursor.com/install -fsS | bash
-cursor-agent login
+1. Install prerequisites  
+   - Node.js 18+  
+   - Cursor Agent CLI (`curl https://cursor.com/install -fsS | bash` then `cursor-agent login`)
+2. Clone and install  
+   ```bash
+   git clone git@github.com:eriknson/ask-tony-ai.git
+   cd ask-tony-ai
+   npm install
+   ```
+3. Run the dev server  
+   ```bash
+   npm run dev
+   ```
+   The app is available at http://localhost:3000.
 
-# Clone and run
-git clone git@github.com:eriknson/cursor-gen-ui.git
-cd cursor-gen-ui
-npm install
-npm run dev
-```
+## Configuration
 
-Open http://localhost:3000
+- Copy `env.local.example` to `.env.local` and supply credentials for the Cursor API and optional integrations.
+- Supported runtime models can be toggled per request with `?model=` (e.g. `?model=composer-1`, `?model=auto`, `?model=gpt-5`, `?model=sonnet-4.5`). Update `NEXT_PUBLIC_ALLOWED_MODELS` to expose additional models.
 
-## Model Selection
+### Slack ingestion (optional)
 
-Switch models by adding `?model=MODEL_NAME` to the URL:
-- `?model=composer-1` - Fast, default
-- `?model=auto` - Intelligent routing
-- `?model=gpt-5` - GPT-5
-- `?model=sonnet-4.5` - Claude Sonnet 4.5
-
-Other available: `sonnet-4`, `opus-4.1`, `grok`
-
-This sets `NEXT_PUBLIC_ALLOWED_MODELS` to include all models. The file is gitignored.
-
-## Slack Bot Integration
-
-Use the built-in Slack bot to capture questions directly from Slack channels and link back to rendered answers.
-
-### Environment variables
-
-Add the following to `.env.local` (or your deployment environment):
+Add these variables when enabling the Slack bot:
 
 - `SLACK_APP_ID`
 - `SLACK_CLIENT_ID`
@@ -44,36 +34,16 @@ Add the following to `.env.local` (or your deployment environment):
 - `SLACK_SIGNING_SECRET`
 - `SLACK_BOT_TOKEN`
 
-### Required Slack scopes
+Grant scopes `app_mentions:read`, `chat:write`, `reactions:write`, and `channels:history` (add `groups:history` for private channels). Configure **Event Subscriptions** to POST to `/api/slack/events` and subscribe to the `app_mention` bot event.
 
-Grant the bot the following OAuth scopes:
-
-- `app_mentions:read`
-- `chat:write`
-- `reactions:write` (required for emoji reactions)
-- `channels:history` (and `groups:history` if you want private channel support)
-
-### Slack App configuration
-
-1. In **Event Subscriptions**, enable events and set the request URL to `https://<your-domain>/api/slack/events`.
-2. Subscribe to the **Bot Event** `app_mention`.
-3. Install the app into your workspace.
-
-When someone @mentions the bot, it reacts with a 🧠 emoji immediately, generates an answer via the UI agent, saves the result (including plan metadata), and replies in the same thread with a shareable link (`/answer/<id>`). The brain emoji is removed once processing is complete.
-
-### Local testing
-
-1. Start the Next.js dev server (`npm run dev`).
-2. Expose it with a tunnel such as `ngrok http 3000`.
-3. Update the Slack request URL to the tunneling domain (e.g., `https://example.ngrok.app/api/slack/events`).
-4. Mention the bot in Slack and confirm it posts back a link that opens the hosted answer page.
+For local testing, run `npm run dev`, expose the site via a tunnel (e.g. `ngrok http 3000`), point the Slack request URL to the tunnel, then mention the bot to verify it returns a link to `/answer/<id>`.
 
 ## Troubleshooting
 
-- **Command not found**: Restart terminal after installing cursor-agent
-- **Not authenticated**: Run `cursor-agent login`
-- **Deployment fails**: Check `CURSOR_API_KEY` is set in Railway environment variables
-- **Local dev works but deployment doesn't**: Ensure prebuild script ran successfully in build logs
+- Restart the shell after installing the Cursor CLI if commands are missing.
+- Re-run `cursor-agent login` when authentication expires.
+- Confirm `CURSOR_API_KEY` is present in the deployment environment when builds fail.
+- Review hosting logs to ensure the prebuild step completed before reporting runtime issues.
 
 ## License
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import { LiveIndicator } from "./live-indicator";
 import type { Widget, PlanResult } from "@/lib/widget-schema";
 
@@ -9,13 +10,8 @@ interface LiveWidgetWrapperProps {
   plan: PlanResult;
   query: string;
   dataMode?: 'web-search' | 'example-data';
-  renderWidget: (widget: Widget) => React.ReactNode;
+  renderWidget: (widget: Widget) => ReactNode;
 }
-
-/**
- * Wraps widgets with auto-refresh capability
- * Handles periodic data fetching and state updates
- */
 export function LiveWidgetWrapper({
   widget,
   plan,
@@ -27,54 +23,48 @@ export function LiveWidgetWrapper({
   const [isPaused, setIsPaused] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toISOString());
   const [remainingRefreshes, setRemainingRefreshes] = useState<number>(50);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const widgetIdRef = useRef<string>(`widget-${Date.now()}-${Math.random()}`);
 
-  const updateInterval = currentWidget.updateInterval || 30000; // Default 30s
-  const minInterval = Math.max(updateInterval, 5000); // Enforce minimum 5s
+  const updateInterval = currentWidget.updateInterval || 30000;
+  const minInterval = Math.max(updateInterval, 5000);
 
   useEffect(() => {
-    // Pause when tab is hidden to save credits
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('🛑 Tab hidden - pausing widget refresh');
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
         }
       } else {
-        console.log('▶️ Tab visible - resuming widget refresh');
         startRefreshInterval();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Start initial interval
     startRefreshInterval();
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [minInterval, plan, query, dataMode]);
 
   const startRefreshInterval = () => {
-    // Clear existing interval if any
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
 
-    // Don't start if paused or tab hidden
     if (isPaused || document.hidden) {
       return;
     }
 
-    // Set up new interval
-    intervalRef.current = setInterval(async () => {
-      await refreshData();
+    intervalRef.current = setInterval(() => {
+      void refreshData();
     }, minInterval);
   };
 
@@ -82,8 +72,6 @@ export function LiveWidgetWrapper({
     if (isPaused) return;
 
     try {
-      console.log('🔄 Refreshing widget data...');
-
       const response = await fetch('/api/refresh', {
         method: 'POST',
         headers: {
@@ -98,9 +86,8 @@ export function LiveWidgetWrapper({
       });
 
       if (response.status === 429) {
-        // Rate limit exceeded - pause updates
         const errorData = await response.json();
-        console.warn('⚠️ Rate limit exceeded:', errorData.message);
+        console.warn('Rate limit exceeded:', errorData.message);
         setIsPaused(true);
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
@@ -114,9 +101,8 @@ export function LiveWidgetWrapper({
       }
 
       const refreshData = await response.json();
-      
-      // Update widget with new data - this triggers a re-render
-      setCurrentWidget(prev => ({
+
+      setCurrentWidget((prev: Widget) => ({
         ...prev,
         data: refreshData.data,
         lastUpdated: refreshData.refreshedAt
@@ -125,10 +111,8 @@ export function LiveWidgetWrapper({
       setLastUpdated(refreshData.refreshedAt);
       setRemainingRefreshes(refreshData.remainingRefreshes || 50);
 
-      console.log('✅ Widget data refreshed', refreshData.data);
     } catch (error) {
-      console.error('❌ Failed to refresh widget:', error);
-      // Don't pause on error - keep trying
+      console.error('Failed to refresh widget:', error);
     }
   };
 
@@ -140,8 +124,7 @@ export function LiveWidgetWrapper({
         lastUpdated={lastUpdated}
         remainingRefreshes={remainingRefreshes}
       />
-      
-      {/* Render widget with current data - re-renders when currentWidget changes */}
+
       {renderWidget(currentWidget)}
     </div>
   );

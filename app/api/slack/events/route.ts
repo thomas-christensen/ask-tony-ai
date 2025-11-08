@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { KnownBlock, MrkdwnElement } from "@slack/web-api";
 import { getSlackClient, getSlackSigningSecret } from "@/lib/slack";
 import { queryAgentStream } from "@/lib/agent-wrapper";
 import { generateAnswerId } from "@/lib/answer-utils";
@@ -64,16 +63,8 @@ function truncate(text: string, maxLength: number): string {
   return `${text.slice(0, maxLength - 3).trimEnd()}...`;
 }
 
-function escapeSlackText(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 function sanitizePlainText(text: string): string {
   return text.replace(/[\r\n]+/g, " ").replace(/[<>]/g, "").trim();
-}
-
-function escapeSlackMarkdown(text: string): string {
-  return escapeSlackText(text).replace(/\*/g, "\\*").replace(/_/g, "\\_").replace(/~/g, "\\~");
 }
 
 interface SlackPreviewPayload {

@@ -85,7 +85,7 @@ export function extractJSONWithRepair(text: string, repairFn: (json: string) => 
     // Fallback: No valid JSON found
     throw new Error('No valid JSON object found in response');
   } catch (error) {
-    console.error('❌ JSON extraction failed:', error);
+    console.error('JSON extraction failed:', error);
     console.error('📄 Text (first 1000 chars):', text.slice(0, 1000));
     console.error('📄 Text (last 500 chars):', text.slice(-500));
     throw new Error(`Failed to parse JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);

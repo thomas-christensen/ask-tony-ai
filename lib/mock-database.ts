@@ -1,19 +1,9 @@
-/**
- * Mock Database Query Module
- *
- * Simulates database queries using JSON data and LLM-based data extraction.
- * This allows testing of intelligent data source selection without a real database.
- */
-
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { cursor } from './cursor-agent';
 import { extractJSON } from './json-extractor';
 import type { DataResult, PlanResult } from './widget-schema';
 
-/**
- * Load the mock database JSON file
- */
 function loadMockDatabase(): any {
   try {
     const dbPath = join(process.cwd(), 'data', 'mock-database.json');
@@ -25,9 +15,6 @@ function loadMockDatabase(): any {
   }
 }
 
-/**
- * System prompt for extracting data from the mock database
- */
 const MOCK_DATABASE_QUERY_PROMPT = `You are a Data Query Engine. Extract the requested data from the provided database JSON.
 
 Your task:
@@ -117,14 +104,6 @@ Output: {
 
 Return ONLY valid JSON. No markdown, no explanations.`;
 
-/**
- * Query the mock database using LLM-based extraction
- *
- * This function:
- * 1. Loads the mock database JSON
- * 2. Uses the LLM to extract/calculate the requested data based on queryIntent
- * 3. Returns structured data in DataResult format
- */
 export async function queryMockDatabase(
   plan: PlanResult,
   userMessage: string,
@@ -133,7 +112,6 @@ export async function queryMockDatabase(
   try {
     const database = loadMockDatabase();
 
-    // Prepare the database summary (lightweight version for token efficiency)
     const dbSummary = {
       users: {
         count: database.users.length,
@@ -157,14 +135,6 @@ export async function queryMockDatabase(
       }
     };
 
-    console.log('🔍 Querying mock database with intent:', plan.queryIntent);
-    console.log('📊 Database stats:', {
-      users: database.users.length,
-      subscriptions: database.subscriptions.length,
-      mrr_snapshots: database.mrr_snapshots?.length || 0,
-      feature_usage: database.feature_usage.length
-    });
-
     const result = await cursor.generateStream({
       prompt: `Query Intent: "${plan.queryIntent}"
 User Question: "${userMessage}"
@@ -184,11 +154,7 @@ Extract the data according to the query intent and return it in the format suita
       throw new Error('LLM query failed: ' + (result.error || 'Unknown error'));
     }
 
-    // Parse the LLM response
     const extractedData = extractJSON(result.finalText);
-
-    console.log('✅ Mock database query successful');
-    console.log('📦 Extracted data:', JSON.stringify(extractedData, null, 2));
 
     return {
       data: extractedData.data || {},
@@ -196,7 +162,7 @@ Extract the data according to the query intent and return it in the format suita
       confidence: 'high'
     };
   } catch (error) {
-    console.error('❌ Mock database query failed:', error);
+    console.error('Mock database query failed:', error);
     return {
       data: {},
       source: null,
@@ -204,5 +170,3 @@ Extract the data according to the query intent and return it in the format suita
     };
   }
 }
-
-// extractJSON is now imported from json-extractor.ts

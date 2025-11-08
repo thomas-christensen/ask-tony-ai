@@ -153,14 +153,14 @@ function validateSync(): ValidationResult {
     warnings: []
   };
   
-  console.log('🔍 Validating component sync...\n');
+  console.log('Validating component sync...\n');
   
   const registryComponents = extractComponentsFromRegistry();
   const { imports: rendererImports, scopeObject: rendererScope } = extractComponentsFromRenderer();
   
-  console.log(`📋 Found ${registryComponents.length} components in registry`);
-  console.log(`📦 Found ${rendererImports.length} imports in renderer`);
-  console.log(`🎯 Found ${rendererScope.length} components in scope object\n`);
+  console.log(`Found ${registryComponents.length} components in registry`);
+  console.log(`Found ${rendererImports.length} imports in renderer`);
+  console.log(`Found ${rendererScope.length} components in scope object\n`);
   
   // Check 1: All registry components should be in renderer scope
   const missingInScope: string[] = [];
@@ -173,7 +173,7 @@ function validateSync(): ValidationResult {
   if (missingInScope.length > 0) {
     result.success = false;
     result.errors.push(
-      `❌ Components in COMPONENT_SCOPE but missing from dynamic-renderer scope object:\n   ${missingInScope.join(', ')}\n   Add them to the scope object in dynamic-renderer.tsx`
+      `Components in COMPONENT_SCOPE but missing from dynamic-renderer scope object:\n   ${missingInScope.join(', ')}\n   Add them to the scope object in dynamic-renderer.tsx`
     );
   }
   
@@ -195,7 +195,7 @@ function validateSync(): ValidationResult {
   
   if (notImported.length > 0) {
     result.warnings.push(
-      `⚠️  Components in scope but not clearly imported:\n   ${notImported.join(', ')}\n   (This might be OK if they're destructured differently)`
+      `Components in scope but not clearly imported:\n   ${notImported.join(', ')}\n   (This might be OK if they're destructured differently)`
     );
   }
   
@@ -209,7 +209,7 @@ function validateSync(): ValidationResult {
   
   if (extraInScope.length > 0) {
     result.warnings.push(
-      `ℹ️  Components in renderer scope but not in COMPONENT_SCOPE:\n   ${extraInScope.join(', ')}\n   Consider adding them to component-registry.ts if they're meant to be used by the AI`
+      `Components in renderer scope but not in COMPONENT_SCOPE:\n   ${extraInScope.join(', ')}\n   Consider adding them to component-registry.ts if they're meant to be used by the AI`
     );
   }
   
@@ -222,26 +222,26 @@ function main() {
     
     // Print errors
     if (result.errors.length > 0) {
-      console.log('\n❌ ERRORS:\n');
+      console.log('\nErrors:\n');
       result.errors.forEach(error => console.log(error + '\n'));
     }
     
     // Print warnings
     if (result.warnings.length > 0) {
-      console.log('\n⚠️  WARNINGS:\n');
+      console.log('\nWarnings:\n');
       result.warnings.forEach(warning => console.log(warning + '\n'));
     }
     
     // Print success
     if (result.success && result.warnings.length === 0) {
-      console.log('✅ All components are in sync!\n');
+      console.log('All components are in sync!\n');
     } else if (result.success) {
-      console.log('✅ No critical errors, but review warnings above.\n');
+      console.log('No critical errors, but review warnings above.\n');
     }
     
     process.exit(result.success ? 0 : 1);
   } catch (error) {
-    console.error('💥 Fatal error:', error);
+    console.error('Fatal error:', error);
     process.exit(1);
   }
 }
